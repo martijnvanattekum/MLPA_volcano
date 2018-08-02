@@ -1,0 +1,11 @@
+name: MLPA
+title:
+account: martijnvanattekum
+server: shinyapps.io
+appId: 128416
+bundleId: 679996
+url: https://martijnvanattekum.shinyapps.io/MLPA/
+when: 1484482637.0926
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: plotly-latest.min.js|www/MLPA 2cond.xlsx|www/MLPA edited denorm.xlsx|www/MLPA edited.xlsx|www/template - Copy.xlsx
