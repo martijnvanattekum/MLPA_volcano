@@ -1,17 +1,14 @@
 library(shiny)
-library(tidyverse) #for data wrangling
+library(tidyverse) #for data wrangling, pipes, ggplot
 library(plotly)    #for interactive plots
 library(limma)     #for making the model
 
-default_in_file <-
-  data.frame(
-    name = "template.csv",
-    size = 20618L,
+#define example file 
+default_in_file <- data.frame(name = "template.csv", size = 20618L,
     type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    datapath = "www/template.csv",
-    stringsAsFactors = FALSE
-  )
+    datapath = "www/template.csv", stringsAsFactors = FALSE)
 
+#instructions to be shown
 instr <- "Select the conditions to compare. Gene groups can be switched on and 
 off by clicking on them in the right-side panel. <br><br> Hover over points to 
 view values or over the graph for more options or to save the plot."
@@ -30,13 +27,6 @@ shinyServer(function(input, output) {
       gene_groups <- factor(dat_in[-1, "gene_group"])
       list(values = values, cond_groups = cond_groups, gene_groups= gene_groups)
       }
-    })
-
-  drops <- reactive({ #reacts to dropdown values
-    d1 <- input$c1
-    d2 <- input$c2
-    if (is.null(d1) || is.null(d2) || d1 == d2) NULL
-    else TRUE  #TRUE is 2 different values are selected in dropdowns
     })
   
   #dropdowns are shown after data is uploaded
@@ -57,13 +47,22 @@ shinyServer(function(input, output) {
         }
     })
   
+  #reacts to dropdown values
+  drops <- reactive({ 
+    d1 <- input$c1
+    d2 <- input$c2
+    if (is.null(d1) || is.null(d2) || d1 == d2) NULL
+    else TRUE  #TRUE is 2 different values are selected in dropdowns
+  })
+  
   #further instructions are shown after data is uploaded and conditions chosen
   output$instruction <- renderText({
     if (is.null(drops())) NULL
     else instr
   })
   
-  output$volcplot <- renderPlotly({ #when drops==TRUE returns volcano plot
+  #when drops==TRUE returns volcano plot
+  output$volcplot <- renderPlotly({ 
     if (is.null(drops())) return(NULL)
     else{
       #read in relevant data
@@ -84,29 +83,25 @@ shinyServer(function(input, output) {
       contrast.matrix <- makeContrasts(contrasts = ctrsts, levels = levels(groups))
       fit <- lmFit(values, design) %>% contrasts.fit(contrast.matrix) %>% eBayes()
       plot_df <- topTable(fit, coef = 1, number = nrow(values), adjust = "BH") %>%
-      mutate(gene = rownames(.), gene_groups = gene_groups)
+        mutate(gene = rownames(.), gene_groups = gene_groups)
+      
       maxFC <- max(abs(plot_df$logFC), na.rm = T)
       maxPval <- max(-log10(plot_df$P.Value), na.rm = T)
         
-      #return volcano plot from topTable
-      gg <- ggplot(data = plot_df, aes(x = logFC, y = -log10(P.Value),
+      #create interactive plotly object from data
+      p <- ggplot(data = plot_df, aes(x = logFC, y = -log10(P.Value),
                                   color = gene_groups, text = plot_df$gene)) +
-            labs(
-          x = paste("up in", my_c1, "<---", "||logFC||", "---> up in", my_c2),
-          y = "-10log P-value",
-          title = "Volcano plot comparing the 2 selected conditions"
-        ) +
-        lims(x = c(-maxFC, maxFC), y = c(0, maxPval)) +
-        geom_vline(xintercept = 0, linetype = 2) +
-        theme(  #! theme minimal
-          legend.key = element_rect(fill = "white"),
-          aspect.ratio = 1, panel.background = element_rect(fill = "white", colour = "black")
-          ) +
-        scale_colour_brewer(palette = "Set1") +
-        geom_point(size = 2, alpha = 0.7)
-      print(gg)
-      p <- ggplotly(gg)
-      p
+          labs(
+            x = paste("up in", my_c1, "<---", "||logFC||", "---> up in", my_c2),
+            y = "-10log P-value",
+            title = "Volcano plot comparing the 2 selected conditions") +
+          lims(x = c(-maxFC, maxFC), y = c(0, maxPval)) +
+          geom_vline(xintercept = 0, linetype = 2) +
+          scale_colour_brewer(palette = "Set1") +
+          geom_point(size = 2, alpha = 0.7) +
+          theme(aspect.ratio = 1) +
+          theme_minimal()     
+      ggplotly(p)
       }
     })
 })
